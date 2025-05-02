@@ -1,0 +1,25 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  GREETING: Hello, World!
+
+tasks:
+  default:
+    desc: "This is a test"
+    cmds:
+      - echo "{{.GREETING}}"
+    silent: true
+
+  ohmy:
+    desc: "This is a test also dskjfhlkdjg lkjfdsl gkfdgælsdoiewæru jdfskjgs lkoir tj glfs jg"
+    cmds:
+      - echo "{{.GREETING}}"
+    silent: true
+
+  something:
+    desc: "This is a test also"
+    cmds:
+      - echo "{{.GREETING}}"
+    silent: true
