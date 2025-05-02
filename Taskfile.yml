@@ -1,25 +1,104 @@
-# https://taskfile.dev
-
 version: '3'
 
-vars:
-  GREETING: Hello, World!
+silent: true
 
 tasks:
-  default:
-    desc: "This is a test"
+  welcome:
+    desc: Displays a welcome message
     cmds:
-      - echo "{{.GREETING}}"
-    silent: true
+      - echo "Welcome to the random task runner!"
 
-  ohmy:
-    desc: "This is a test also dskjfhlkdjg lkjfdsl gkfdgælsdoiewæru jdfskjgs lkoir tj glfs jg"
+  make-coffee:
+    desc: Pretends to make coffee
     cmds:
-      - echo "{{.GREETING}}"
-    silent: true
+      - echo "Brewing a fresh cup of coffee... Done!"
 
-  something:
-    desc: "This is a test also"
+  deploy:
+    desc: Simulates a deployment
     cmds:
-      - echo "{{.GREETING}}"
-    silent: true
+      - echo "Deploying to production... Just kidding, this is just an echo!"
+
+  backup-database:
+    desc: Pretends to backup a database
+    cmds:
+      - echo "Creating database backup... No actual databases were harmed."
+
+  check-health:
+    desc: Checks the health of the system
+    cmds:
+      - echo "System health Excellent! (This is just a simulation)"
+
+  clean:
+    desc: Simulates cleaning up resources
+    cmds:
+      - echo "Cleaning up temporary files... All clean now!"
+
+  build:
+    desc: Pretends to build the project
+    cmds:
+      - echo "Building project... Build successful! (Not really building anything)"
+
+  test:
+    desc: Simulates running tests
+    cmds:
+      - echo "Running tests... All tests passed! (No actual tests were run)"
+
+  generate-report:
+    desc: Pretends to generate a report
+    cmds:
+      - echo "Generating detailed report... Report complete and looks great!"
+
+  update-dependencies:
+    desc: Simulates updating dependencies
+    cmds:
+      - echo "Updating all dependencies... Everything is up to date now!"
+
+  encrypt-data:
+    desc: Pretends to encrypt sensitive data
+    cmds:
+      - echo "Encrypting sensitive data... Data is now secure! (Not really)"
+
+  optimize:
+    desc: Simulates optimizing performance
+    cmds:
+      - echo "Optimizing system performance... Everything is now blazing fast!"
+
+  monitor:
+    desc: Pretends to monitor the system
+    cmds:
+      - echo "Monitoring system resources... All metrics look good!"
+
+  rotate-logs:
+    desc: Simulates log rotation
+    cmds:
+      - echo "Rotating logs... Log rotation complete!"
+
+  scale:
+    desc: Pretends to scale the system
+    cmds:
+      - echo "Scaling system... Capacity has been increased! (Just pretending)"
+
+  migrate:
+    desc: Simulates database migration
+    cmds:
+      - echo "Migrating database schema... Migration successful!"
+
+  lint:
+    desc: Pretends to lint the code
+    cmds:
+      - echo "Linting code... No issues found! (Not actually linting anything)"
+
+  create-backup:
+    desc: Simulates creating a backup
+    cmds:
+      - echo "Creating system backup... Backup complete and stored safely!"
+
+  validate:
+    desc: Pretends to validate configurations
+    cmds:
+      - echo "Validating all configurations... Everything looks valid!"
+
+  reindex:
+    desc: Simulates reindexing a database
+    cmds:
+      - echo "Reindexing database... All indexes have been optimized!"

@@ -26,6 +26,7 @@ type TaskCommand struct {
 type Task struct {
 	Name string
 	Desc string
+	Cmds []string // Added field for commands
 }
 
 // Implement list.Item interface
@@ -49,6 +50,7 @@ type model struct {
 	width        int
 	height       int
 	showDesc     bool // Whether to show descriptions
+	showCmds     bool // Whether to show commands
 }
 
 // rootCmd represents the base command when called without any subcommands
@@ -151,7 +153,6 @@ func parseTaskfile() ([]Task, error) {
 		dir, err := os.Getwd()
 		if err != nil {
 			return nil, err
-
 		}
 
 		for {
@@ -192,14 +193,27 @@ func parseTaskfile() ([]Task, error) {
 	if tasksMap, ok := taskfile["tasks"].(map[string]interface{}); ok {
 		for name, details := range tasksMap {
 			description := ""
+			var commands []string
+
 			if taskDetails, ok := details.(map[string]interface{}); ok {
+				// Get description
 				if desc, ok := taskDetails["desc"].(string); ok {
 					description = desc
 				} else if desc, ok := taskDetails["summary"].(string); ok {
 					description = desc
 				}
+
+				// Get commands
+				if cmds, ok := taskDetails["cmds"].([]interface{}); ok {
+					for _, cmd := range cmds {
+						if cmdStr, ok := cmd.(string); ok {
+							commands = append(commands, cmdStr)
+						}
+					}
+				}
 			}
-			tasks = append(tasks, Task{Name: name, Desc: description})
+
+			tasks = append(tasks, Task{Name: name, Desc: description, Cmds: commands})
 		}
 	}
 
@@ -269,7 +283,12 @@ func launchTUI() {
 		filteredList: items,
 		allItems:     items,
 		showDesc:     false, // Start with descriptions hidden
+		showCmds:     false, // Start with commands hidden
 	}
+
+	// We won't actually use the filter's focus state anymore
+	// but we'll set this to simplify the code
+	m.filter.Focus()
 
 	// Run the TUI
 	p := tea.NewProgram(m, tea.WithAltScreen())
@@ -290,11 +309,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		// First check if filter is focused and pass the key to it
+		// First check if filter is focused
 		if m.filter.Focused() {
 			switch msg.String() {
-			case "ctrl+c", "esc":
+			case "ctrl+c":
 				return m, tea.Quit
+			case "esc":
+				// Blur the filter on ESC to enter navigation mode
+				m.filter.Blur()
+				return m, nil
 			case "enter":
 				if len(m.filteredList) > 0 {
 					i := m.list.SelectedItem()
@@ -313,19 +336,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						)
 					}
 				}
-			case "down", "up", "j", "k":
+			case "down", "up":
 				// Pass navigation keys to the list
 				var listCmd tea.Cmd
 				m.list, listCmd = m.list.Update(msg)
 				cmds = append(cmds, listCmd)
-			case "right", "l":
-				// Show description
-				m.showDesc = true
-			case "left", "h":
-				// Hide description
-				m.showDesc = false
 			default:
-				// Handle filter input
+				// All other keys go to filter input
 				var filterCmd tea.Cmd
 				m.filter, filterCmd = m.filter.Update(msg)
 				cmds = append(cmds, filterCmd)
@@ -335,9 +352,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.list.SetItems(m.filteredList)
 			}
 		} else {
-			// List is focused
+			// Navigation mode (filter not focused)
 			switch msg.String() {
-			case "ctrl+c", "esc":
+			case "ctrl+c", "esc", "q":
 				return m, tea.Quit
 			case "enter":
 				if len(m.filteredList) > 0 {
@@ -358,20 +375,45 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			case "right", "l":
-				// Show description
-				m.showDesc = true
+				// Toggle display modes with right arrow:
+				// No desc -> Show desc -> Show desc+cmds -> No desc
+				if !m.showDesc {
+					// First right arrow: show descriptions
+					m.showDesc = true
+					m.showCmds = false
+				} else if !m.showCmds {
+					// Second right arrow: show commands too
+					m.showCmds = true
+				} else {
+					// Third right arrow: back to no extras
+					m.showDesc = false
+					m.showCmds = false
+				}
 			case "left", "h":
-				// Hide description
+				// Left arrow always hides everything
 				m.showDesc = false
+				m.showCmds = false
+			case "down", "j":
+				// Down navigation
+				var listCmd tea.Cmd
+				m.list, listCmd = m.list.Update(tea.KeyMsg{Type: tea.KeyDown})
+				cmds = append(cmds, listCmd)
+			case "up", "k":
+				// Up navigation
+				var listCmd tea.Cmd
+				m.list, listCmd = m.list.Update(tea.KeyMsg{Type: tea.KeyUp})
+				cmds = append(cmds, listCmd)
 			case "/":
 				// Focus the filter input
 				m.filter.Focus()
 				return m, textinput.Blink
 			default:
-				// Pass navigation keys to the list
-				var listCmd tea.Cmd
-				m.list, listCmd = m.list.Update(msg)
-				cmds = append(cmds, listCmd)
+				// Any other character starts filter and adds it
+				m.filter.Focus()
+				m.filter.SetValue(msg.String())
+				m.filteredList = fuzzyFilter(m.allItems, m.filter.Value())
+				m.list.SetItems(m.filteredList)
+				return m, textinput.Blink
 			}
 		}
 
@@ -395,11 +437,12 @@ func (m model) View() string {
 		Padding(0, 1).
 		Width(m.width - 4)
 
-	filterContent := m.filter.Value()
-	if filterContent == "" {
+	// Simple filter display - no mode indicators
+	var filterContent string
+	if m.filter.Value() == "" {
 		filterContent = "Type to filter tasks..."
 	} else {
-		filterContent = "Filter: " + filterContent
+		filterContent = "Filter: " + m.filter.Value()
 	}
 
 	filterView := filterStyle.Render(filterContent)
@@ -419,19 +462,27 @@ func (m model) View() string {
 			lineStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
 		}
 
-		// Render line with absolutely no spacing
+		// Render line with task name only by default
 		line := task.Name
 
-		// Only show descriptions if showDesc is true or it's the selected item and showDesc is true
+		// Add description if enabled for selected item
 		if m.showDesc && i == selected && task.Desc != "" {
 			line += " - " + task.Desc
+		}
+
+		// Add commands if enabled for selected item
+		if m.showCmds && i == selected && len(task.Cmds) > 0 {
+			line += "\n  cmds:"
+			for _, cmd := range task.Cmds {
+				line += "\n    - " + cmd
+			}
 		}
 
 		listItems.WriteString(lineStyle.Render(line) + "\n")
 	}
 
-	// Add help text at the bottom with new key commands
-	helpText := "\n↑/↓: navigate • →: show desc • ←: hide desc • enter: select • esc: quit"
+	// Simple help text without mode indicators
+	helpText := "\n↑/↓: navigate • →: toggle details • ←: hide details • enter: select • q: quit"
 
 	return "\n" + filterView + "\n\n" + listItems.String() + helpText
 }
