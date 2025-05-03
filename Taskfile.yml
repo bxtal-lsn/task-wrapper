@@ -19,7 +19,6 @@ tasks:
       - echo "Deploying to production... Just kidding, this is just an echo!"
 
   backup-database:
-    desc: Pretends to backup a database
     cmds:
       - echo "Creating database backup... No actual databases were harmed."
 

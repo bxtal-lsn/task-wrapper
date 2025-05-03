@@ -49,8 +49,7 @@ type model struct {
 	err          error
 	width        int
 	height       int
-	showDesc     bool // Whether to show descriptions
-	showCmds     bool // Whether to show commands
+	expanded     bool // Combined state for showing desc and cmds
 }
 
 // rootCmd represents the base command when called without any subcommands
@@ -282,8 +281,7 @@ func launchTUI() {
 		filter:       ti,
 		filteredList: items,
 		allItems:     items,
-		showDesc:     false, // Start with descriptions hidden
-		showCmds:     false, // Start with commands hidden
+		expanded:     false, // Start with details hidden
 	}
 
 	// We won't actually use the filter's focus state anymore
@@ -317,6 +315,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "esc":
 				// Blur the filter on ESC to enter navigation mode
 				m.filter.Blur()
+				return m, nil
+			case "tab":
+				// Toggle expanded state
+				m.expanded = !m.expanded
 				return m, nil
 			case "enter":
 				if len(m.filteredList) > 0 {
@@ -356,6 +358,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "ctrl+c", "esc", "q":
 				return m, tea.Quit
+			case "tab":
+				// Toggle expanded state
+				m.expanded = !m.expanded
+				return m, nil
 			case "enter":
 				if len(m.filteredList) > 0 {
 					i := m.list.SelectedItem()
@@ -374,25 +380,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						)
 					}
 				}
-			case "right", "l":
-				// Toggle display modes with right arrow:
-				// No desc -> Show desc -> Show desc+cmds -> No desc
-				if !m.showDesc {
-					// First right arrow: show descriptions
-					m.showDesc = true
-					m.showCmds = false
-				} else if !m.showCmds {
-					// Second right arrow: show commands too
-					m.showCmds = true
-				} else {
-					// Third right arrow: back to no extras
-					m.showDesc = false
-					m.showCmds = false
-				}
-			case "left", "h":
-				// Left arrow always hides everything
-				m.showDesc = false
-				m.showCmds = false
 			case "down", "j":
 				// Down navigation
 				var listCmd tea.Cmd
@@ -449,8 +436,8 @@ func (m model) View() string {
 
 	// Create a custom ultra-compact list rendering
 	var listItems strings.Builder
-
 	selected := m.list.Index()
+
 	for i, item := range m.filteredList {
 		task := item.(Task)
 
@@ -462,27 +449,29 @@ func (m model) View() string {
 			lineStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
 		}
 
-		// Render line with task name only by default
+		// Render line with task name
 		line := task.Name
 
-		// Add description if enabled for selected item
-		if m.showDesc && i == selected && task.Desc != "" {
-			line += " - " + task.Desc
-		}
-
-		// Add commands if enabled for selected item
-		if m.showCmds && i == selected && len(task.Cmds) > 0 {
-			line += "\n  cmds:"
-			for _, cmd := range task.Cmds {
-				line += "\n    - " + cmd
+		// Add description and commands if expanded for selected item
+		if m.expanded && i == selected {
+			if task.Desc != "" {
+				line += "\n    desc: " + task.Desc
+			} else {
+				line += "\n    desc: NO DESCRIPTION"
+			}
+			if len(task.Cmds) > 0 {
+				line += "\n    cmds:"
+				for _, cmd := range task.Cmds {
+					line += "\n      " + cmd
+				}
 			}
 		}
 
 		listItems.WriteString(lineStyle.Render(line) + "\n")
 	}
 
-	// Simple help text without mode indicators
-	helpText := "\n↑/↓: navigate • →: toggle details • ←: hide details • enter: select • q: quit"
+	// Simple help text
+	helpText := "\n↑/↓: navigate • tab: toggle details • enter: select • q: quit"
 
 	return "\n" + filterView + "\n\n" + listItems.String() + helpText
 }
