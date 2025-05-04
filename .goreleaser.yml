@@ -1,0 +1,62 @@
+version: 2
+project_name: tt
+
+before:
+  hooks:
+    - go mod tidy
+    - go test ./...
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - 386
+    # Optional: add version info to your binary
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+
+archives:
+  - format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    # Use zip for Windows
+    format_overrides:
+      - goos: windows
+        format: zip
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+
+  # Draft release (set to false for automatic publishing)
+  draft: false
+  
+  # If set to auto, will mark the release as not ready for production
+  # in case there is an indicator for this in the tag e.g. v1.0.0-rc1
+  prerelease: auto
+  
+  # Header for the release body
+  header: |
+    ## Release {{ .Version }} ({{ .Date }})
+
+  # Footer for the release body  
+  footer: |
+    ## Thanks!
+    
+    Thanks to all contributors!
+
+  # You can disable the changelog to use your own
+  # disable: true
