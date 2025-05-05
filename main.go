@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -94,7 +95,6 @@ func main() {
 // initialize runs before command execution
 func initialize() {
 	var err error
-
 	// Check if task is available
 	taskCmd, err = findTaskCommand()
 	if err != nil {
@@ -104,18 +104,19 @@ func initialize() {
 		fmt.Println("- Installation guide: https://taskfile.dev/installation/")
 		os.Exit(1)
 	}
-
 	// Parse Taskfile
 	tasks, err = parseTaskfile()
 	if err != nil {
 		fmt.Printf("Error parsing Taskfile: %v\n", err)
 		os.Exit(1)
 	}
-
 	if len(tasks) == 0 {
 		fmt.Println("No tasks found in Taskfile. Please make sure your Taskfile has tasks defined.")
 		os.Exit(1)
 	}
+
+	// Sort tasks alphabetically by name
+	sortTasksByName(tasks)
 }
 
 // findTaskCommand checks if 'task' is available, falls back to 'go tool task',
@@ -500,4 +501,10 @@ func runTaskDirect(args []string) int {
 	}
 
 	return 0
+}
+
+func sortTasksByName(tasks []Task) {
+	sort.Slice(tasks, func(i, j int) bool {
+		return tasks[i].Name < tasks[j].Name
+	})
 }
