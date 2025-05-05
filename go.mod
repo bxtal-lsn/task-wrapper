@@ -1,4 +1,4 @@
-module github.com/bxtal-lsn/task-wrapper
+module github.com/bxtal-lsn/tt
 
 go 1.24.2
 
